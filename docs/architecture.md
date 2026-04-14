@@ -38,8 +38,32 @@ async with Tailscale() as client: ...
 async with Tailscale(tailnet="my-net", api_key="tskey-...") as client: ...
 ```
 
+## API endpoints
+
+| Method                       | HTTP          | Endpoint                              |
+| ---------------------------- | ------------- | ------------------------------------- |
+| `Tailscale.devices()`        | GET           | `/tailnet/{tailnet}/devices?fields=all`|
+| `Tailscale.device(device_id)`| GET           | `/device/{deviceId}?fields=all`       |
+| `Tailscale.acl()`            | GET           | `/tailnet/{tailnet}/acl`              |
+| `Tailscale.set_acl(policy)`  | POST          | `/tailnet/{tailnet}/acl`              |
+
 ## Models
 
 Models use `mashumaro` `field_options(alias=...)` to map camelCase API fields to snake_case.
 `__pre_deserialize__` classmethod on models handles API inconsistencies (e.g. empty string -> None).
 Serialization uses orjson for performance.
+
+### Device models
+
+- `Device` -- single Tailscale device with addresses, tags, connectivity info
+- `Devices` -- wrapper that deserializes the API list into a dict keyed by device ID
+- `ClientConnectivity`, `ClientSupports` -- nested device connectivity details
+
+### ACL policy models
+
+- `PolicyFile` -- top-level ACL policy file containing groups, tagOwners, hosts, ssh, grants, nodeAttrs
+- `AclSshRule` -- a single SSH access rule (action, src, dst, users)
+- `AclGrant` -- a single network-level grant (src, dst, ip)
+- `NodeAttr` -- a node attribute rule (target, attr)
+
+`PolicyFile` uses `serialize_by_alias = True` so `to_dict()` / `to_jsonb()` produce camelCase keys matching the API format.

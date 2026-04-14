@@ -7,10 +7,10 @@ from .exceptions import (
     TailscaleConnectionError,
     TailscaleError,
 )
-from .models import Device, Devices
+from .models import Device, Devices, PolicyFile
 from aiohttp import BasicAuth
 from aiohttp.client import ClientError, ClientResponseError, ClientSession
-from aiohttp.hdrs import METH_GET
+from aiohttp.hdrs import METH_GET, METH_POST
 from dataclasses import dataclass, field
 from decouple import config
 from typing import Any, Self
@@ -135,6 +135,51 @@ class Tailscale:
         """
         data = await self._request(f"tailnet/{self.tailnet}/devices?fields=all")
         return Devices.from_json(data).devices
+
+    async def device(self, device_id: str) -> Device:
+        """Get a single device by ID from the Tailscale API.
+
+        Args:
+        ----
+            device_id: The device ID or nodeId.
+
+        Returns:
+        -------
+            A Device object.
+
+        """
+        data = await self._request(f"device/{device_id}?fields=all")
+        return Device.from_json(data)
+
+    async def acl(self) -> PolicyFile:
+        """Get the ACL policy file for the tailnet.
+
+        Returns
+        -------
+            A PolicyFile object representing the current ACL policy.
+
+        """
+        data = await self._request(f"tailnet/{self.tailnet}/acl")
+        return PolicyFile.from_json(data)
+
+    async def set_acl(self, policy: PolicyFile) -> PolicyFile:
+        """Update the ACL policy file for the tailnet.
+
+        Args:
+        ----
+            policy: The new PolicyFile to set.
+
+        Returns:
+        -------
+            The updated PolicyFile as returned by the API.
+
+        """
+        data = await self._request(
+            f"tailnet/{self.tailnet}/acl",
+            method=METH_POST,
+            data=policy.to_dict(),
+        )
+        return PolicyFile.from_json(data)
 
     async def close(self) -> None:
         """Close open client session."""

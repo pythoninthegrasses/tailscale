@@ -69,6 +69,21 @@ Extended docs live in `docs/`. Pull these in when you need deeper context:
 - prek `fail_fast: true` -- first hook failure stops the run.
 - `ruff.toml` sets `fix-only = true` globally, so `ruff check` without `--fix` still applies fixes silently. Use `--exit-non-zero-on-fix` to detect changes.
 
+## Context7
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
+### Libraries
+
+- astral-sh/uv
+- astral-sh/ruff
+- hbnetwork/python-decouple
+- hypothesisworks/hypothesis
+- jdx/mise
+- mrlesk/backlog.md
+- websites/tailscale
+- websites/taskfile_dev
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
 <CRITICAL_INSTRUCTION>

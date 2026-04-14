@@ -12,7 +12,16 @@ from tailscale.exceptions import (
     TailscaleConnectionError,
     TailscaleError,
 )
-from tailscale.models import ClientConnectivity, ClientSupports, Device, Devices
+from tailscale.models import (
+    AclGrant,
+    AclSshRule,
+    ClientConnectivity,
+    ClientSupports,
+    Device,
+    Devices,
+    NodeAttr,
+    PolicyFile,
+)
 from unittest.mock import patch
 from yarl import URL
 
@@ -212,3 +221,138 @@ def test_error_when_nothing_provided(mock_config: patch) -> None:
 
     with pytest.raises(TailscaleError):
         Tailscale()
+
+
+# -- ACL policy model tests ----------------------------------------------------
+
+_ACL_JSON = """{
+    "acl": "{\\"groups\\": {}, \\"tagOwners\\": {\\"tag:nas\\": [\\"autogroup:admin\\"]}, \\"hosts\\": {\\"mbp\\": \\"100.71.214.58\\", \\"ds920\\": \\"100.75.120.75\\"}, \\"ssh\\": [{\\"action\\": \\"accept\\", \\"src\\": [\\"autogroup:admin\\"], \\"dst\\": [\\"autogroup:self\\"], \\"users\\": [\\"autogroup:nonroot\\", \\"root\\"]}], \\"nodeAttrs\\": [{\\"target\\": [\\"autogroup:members\\"], \\"attr\\": [\\"funnel\\"]}], \\"grants\\": [{\\"src\\": [\\"autogroup:admin\\"], \\"dst\\": [\\"*\\"], \\"ip\\": [\\"*\\"]}]}"
+}"""
+
+_POLICY_BODY = """{
+    "groups": {},
+    "tagOwners": {"tag:nas": ["autogroup:admin"]},
+    "hosts": {"mbp": "100.71.214.58", "ds920": "100.75.120.75"},
+    "ssh": [
+        {
+            "action": "accept",
+            "src": ["autogroup:admin"],
+            "dst": ["autogroup:self"],
+            "users": ["autogroup:nonroot", "root"]
+        }
+    ],
+    "nodeAttrs": [
+        {
+            "target": ["autogroup:members"],
+            "attr": ["funnel"]
+        }
+    ],
+    "grants": [
+        {
+            "src": ["autogroup:admin"],
+            "dst": ["*"],
+            "ip": ["*"]
+        }
+    ]
+}"""
+
+
+def test_policy_file_from_json() -> None:
+    """PolicyFile deserializes from API JSON."""
+    policy = PolicyFile.from_json(_POLICY_BODY)
+    assert policy.tag_owners == {"tag:nas": ["autogroup:admin"]}
+    assert policy.hosts == {"mbp": "100.71.214.58", "ds920": "100.75.120.75"}
+
+
+def test_policy_file_groups_default_empty() -> None:
+    """PolicyFile.groups defaults to empty dict."""
+    policy = PolicyFile.from_json(_POLICY_BODY)
+    assert policy.groups == {}
+
+
+def test_policy_file_ssh_rules() -> None:
+    """PolicyFile.ssh contains AclSshRule objects."""
+    policy = PolicyFile.from_json(_POLICY_BODY)
+    assert len(policy.ssh) == 1
+    rule = policy.ssh[0]
+    assert isinstance(rule, AclSshRule)
+    assert rule.action == "accept"
+    assert rule.src == ["autogroup:admin"]
+    assert rule.dst == ["autogroup:self"]
+    assert rule.users == ["autogroup:nonroot", "root"]
+
+
+def test_policy_file_grants() -> None:
+    """PolicyFile.grants contains AclGrant objects."""
+    policy = PolicyFile.from_json(_POLICY_BODY)
+    assert len(policy.grants) == 1
+    grant = policy.grants[0]
+    assert isinstance(grant, AclGrant)
+    assert grant.src == ["autogroup:admin"]
+    assert grant.dst == ["*"]
+    assert grant.ip == ["*"]
+
+
+def test_policy_file_node_attrs() -> None:
+    """PolicyFile.node_attrs contains NodeAttr objects."""
+    policy = PolicyFile.from_json(_POLICY_BODY)
+    assert len(policy.node_attrs) == 1
+    attr = policy.node_attrs[0]
+    assert isinstance(attr, NodeAttr)
+    assert attr.target == ["autogroup:members"]
+    assert attr.attr == ["funnel"]
+
+
+def test_policy_file_roundtrip() -> None:
+    """PolicyFile survives JSON serialize -> deserialize roundtrip."""
+    policy = PolicyFile.from_json(_POLICY_BODY)
+    raw = policy.to_jsonb()
+    restored = PolicyFile.from_json(raw)
+    assert restored == policy
+
+
+def test_policy_file_to_dict_keys() -> None:
+    """to_dict produces camelCase keys matching the API."""
+    policy = PolicyFile.from_json(_POLICY_BODY)
+    d = policy.to_dict()
+    assert "tagOwners" in d
+    assert "nodeAttrs" in d
+
+
+def test_ssh_rule_defaults() -> None:
+    """AclSshRule fields default to empty lists."""
+    rule = AclSshRule(action="accept")
+    assert rule.src == []
+    assert rule.dst == []
+    assert rule.users == []
+
+
+def test_grant_defaults() -> None:
+    """AclGrant fields default to empty lists."""
+    grant = AclGrant()
+    assert grant.src == []
+    assert grant.dst == []
+    assert grant.ip == []
+
+
+def test_policy_file_minimal() -> None:
+    """PolicyFile can be constructed with all defaults (empty policy)."""
+    policy = PolicyFile()
+    assert policy.groups == {}
+    assert policy.tag_owners == {}
+    assert policy.hosts == {}
+    assert policy.ssh == []
+    assert policy.grants == []
+    assert policy.node_attrs == []
+
+
+def test_acl_url_join() -> None:
+    """Verify the URL join logic for ACL endpoints."""
+    url = URL("https://api.tailscale.com/api/v2/").join(URL("tailnet/my-net/acl"))
+    assert str(url) == "https://api.tailscale.com/api/v2/tailnet/my-net/acl"
+
+
+def test_device_url_join() -> None:
+    """Verify the URL join logic for single device endpoint."""
+    url = URL("https://api.tailscale.com/api/v2/").join(URL("device/12345"))
+    assert str(url) == "https://api.tailscale.com/api/v2/device/12345"
