@@ -1,4 +1,4 @@
-"""Asynchronous client for the Tailscale API."""
+"""Shared test helpers."""
 
 from pathlib import Path
 

@@ -1,22 +1,39 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
 root = true
 
+# Unix-style newlines and whitespace cleanup
 [*]
-charset = utf-8
 end_of_line = lf
-indent_style = space
 insert_final_newline = true
 trim_trailing_whitespace = true
-indent_size = 4
+insert_final_newline = true
 
+# Protect whitespace in markdown files
 [*.md]
-indent_size = 2
 trim_trailing_whitespace = false
 
-[*.json]
-indent_size = 2
-
-[{.gitignore,.gitkeep,.editorconfig}]
-indent_size = 2
-
-[Makefile]
+# general formatting
+[*.{bash,go,sh,zsh,justfile,Makefile}]
 indent_style = tab
+indent_size = 4
+
+# Set default charset
+[*.{html,xml,js,css,py}]
+charset = utf-8
+
+# python
+[*.py]
+indent_style = space
+indent_size = 4
+
+# rust
+[*.rs]
+indent_style = space
+indent_size = 4
+
+# webdev et al
+[*.{html,xml,js,css,json,jsonc,gql,lua,tf,tfvars,yml,yaml,Vagrantfile}]
+indent_style = space
+indent_size = 2

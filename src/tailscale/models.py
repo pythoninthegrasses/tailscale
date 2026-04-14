@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
-
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
+from typing import Any
 
 
 @dataclass

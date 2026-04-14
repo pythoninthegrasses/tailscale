@@ -2,7 +2,6 @@
 """Asynchronous client for the Tailscale API."""
 
 import asyncio
-
 from tailscale import Tailscale
 
 

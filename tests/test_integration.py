@@ -1,12 +1,13 @@
-"""Asynchronous client for the Tailscale API."""
+"""Integration tests for the Tailscale API client.
+
+Tests that exercise the HTTP layer with aresponses mocks.
+"""
 
 # pylint: disable=protected-access
-import asyncio
-
 import aiohttp
+import asyncio
 import pytest
 from aresponses import Response, ResponsesMockServer
-
 from tailscale import Tailscale
 from tailscale.exceptions import (
     TailscaleAuthenticationError,
