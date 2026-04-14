@@ -356,3 +356,121 @@ def test_device_url_join() -> None:
     """Verify the URL join logic for single device endpoint."""
     url = URL("https://api.tailscale.com/api/v2/").join(URL("device/12345"))
     assert str(url) == "https://api.tailscale.com/api/v2/device/12345"
+
+
+# -- Multi-rule / multi-grant policy tests (mirrors fix_nas_grant.py) ----------
+
+_MULTI_GRANT_POLICY = """{
+    "groups": {},
+    "tagOwners": {"tag:nas": ["autogroup:admin"]},
+    "hosts": {"mbp": "100.71.214.58", "ds920": "100.75.120.75"},
+    "ssh": [
+        {
+            "action": "accept",
+            "src": ["autogroup:admin"],
+            "dst": ["autogroup:self"],
+            "users": ["autogroup:nonroot", "root"]
+        },
+        {
+            "action": "accept",
+            "src": ["shared@example.com"],
+            "dst": ["tag:nas"],
+            "users": ["autogroup:nonroot"]
+        }
+    ],
+    "nodeAttrs": [
+        {"target": ["autogroup:members"], "attr": ["funnel"]}
+    ],
+    "grants": [
+        {"src": ["autogroup:admin"], "dst": ["*"], "ip": ["*"]},
+        {"src": ["shared@example.com"], "dst": ["ds920"], "ip": ["tcp:28888"]}
+    ]
+}"""
+
+
+def test_multi_grant_policy_ssh_rules() -> None:
+    """Policy with two SSH rules deserializes both."""
+    policy = PolicyFile.from_json(_MULTI_GRANT_POLICY)
+    assert len(policy.ssh) == 2
+    assert policy.ssh[0].src == ["autogroup:admin"]
+    assert policy.ssh[1].src == ["shared@example.com"]
+    assert policy.ssh[1].dst == ["tag:nas"]
+    assert policy.ssh[1].users == ["autogroup:nonroot"]
+
+
+def test_multi_grant_policy_grants() -> None:
+    """Policy with two grants deserializes both."""
+    policy = PolicyFile.from_json(_MULTI_GRANT_POLICY)
+    assert len(policy.grants) == 2
+    admin = policy.grants[0]
+    shared = policy.grants[1]
+    assert admin.src == ["autogroup:admin"]
+    assert admin.dst == ["*"]
+    assert shared.src == ["shared@example.com"]
+    assert shared.dst == ["ds920"]
+    assert shared.ip == ["tcp:28888"]
+
+
+def test_multi_grant_policy_roundtrip() -> None:
+    """Multi-rule policy survives JSON roundtrip."""
+    policy = PolicyFile.from_json(_MULTI_GRANT_POLICY)
+    restored = PolicyFile.from_json(policy.to_jsonb())
+    assert restored == policy
+
+
+def test_grant_mutation_updates_fields() -> None:
+    """Mutating grant dst/ip in-place is reflected in the policy."""
+    policy = PolicyFile.from_json(_MULTI_GRANT_POLICY)
+    target = policy.grants[1]
+    target.dst = ["tag:nas"]
+    target.ip = ["tcp:22", "tcp:28888"]
+    assert policy.grants[1].dst == ["tag:nas"]
+    assert policy.grants[1].ip == ["tcp:22", "tcp:28888"]
+
+
+def test_grant_mutation_roundtrip() -> None:
+    """Mutated grant survives JSON roundtrip."""
+    policy = PolicyFile.from_json(_MULTI_GRANT_POLICY)
+    policy.grants[1].dst = ["tag:nas"]
+    policy.grants[1].ip = ["tcp:22", "tcp:28888"]
+    restored = PolicyFile.from_json(policy.to_jsonb())
+    assert restored.grants[1].dst == ["tag:nas"]
+    assert restored.grants[1].ip == ["tcp:22", "tcp:28888"]
+
+
+def test_grant_dst_mismatch_between_ssh_and_grant() -> None:
+    """Demonstrate that SSH rule dst and grant dst can diverge (the bug this task fixes)."""
+    policy = PolicyFile.from_json(_MULTI_GRANT_POLICY)
+    ssh_dst = policy.ssh[1].dst
+    grant_dst = policy.grants[1].dst
+    # Before fix: SSH targets tag:nas but grant targets host alias ds920
+    assert ssh_dst == ["tag:nas"]
+    assert grant_dst == ["ds920"]
+    assert ssh_dst != grant_dst
+
+
+# -- _redact helper tests ------------------------------------------------------
+# Duplicated here because examples/ is not an importable package.
+
+
+def _redact(email: str) -> str:
+    """Replace the local part of an email with '***'."""
+    _local, _, domain = email.partition("@")
+    if not domain:
+        return "***"
+    return f"***@{domain}"
+
+
+def test_redact_email() -> None:
+    """_redact replaces the local part of an email."""
+    assert _redact("user@example.com") == "***@example.com"
+
+
+def test_redact_no_domain() -> None:
+    """_redact returns '***' when there is no @ sign."""
+    assert _redact("noemailatall") == "***"
+
+
+def test_redact_empty_string() -> None:
+    """_redact handles empty string."""
+    assert _redact("") == "***"

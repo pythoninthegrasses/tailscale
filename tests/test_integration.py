@@ -297,3 +297,110 @@ async def test_get_device_not_found(_mock: patch, aresponses: ResponsesMockServe
         tailscale = Tailscale(tailnet="frenck", api_key="abc", session=session)
         with pytest.raises(TailscaleError):
             await tailscale.device("nonexistent")
+
+
+# -- Shared-user grant mutation integration tests (mirrors fix_nas_grant.py) ---
+
+_MULTI_GRANT_ACL_RESPONSE = """{
+    "groups": {},
+    "tagOwners": {"tag:nas": ["autogroup:admin"]},
+    "hosts": {"mbp": "100.71.214.58", "ds920": "100.75.120.75"},
+    "ssh": [
+        {
+            "action": "accept",
+            "src": ["autogroup:admin"],
+            "dst": ["autogroup:self"],
+            "users": ["autogroup:nonroot", "root"]
+        },
+        {
+            "action": "accept",
+            "src": ["shared@example.com"],
+            "dst": ["tag:nas"],
+            "users": ["autogroup:nonroot"]
+        }
+    ],
+    "nodeAttrs": [
+        {"target": ["autogroup:members"], "attr": ["funnel"]}
+    ],
+    "grants": [
+        {"src": ["autogroup:admin"], "dst": ["*"], "ip": ["*"]},
+        {"src": ["shared@example.com"], "dst": ["ds920"], "ip": ["tcp:28888"]}
+    ]
+}"""
+
+_UPDATED_GRANT_ACL_RESPONSE = """{
+    "groups": {},
+    "tagOwners": {"tag:nas": ["autogroup:admin"]},
+    "hosts": {"mbp": "100.71.214.58", "ds920": "100.75.120.75"},
+    "ssh": [
+        {
+            "action": "accept",
+            "src": ["autogroup:admin"],
+            "dst": ["autogroup:self"],
+            "users": ["autogroup:nonroot", "root"]
+        },
+        {
+            "action": "accept",
+            "src": ["shared@example.com"],
+            "dst": ["tag:nas"],
+            "users": ["autogroup:nonroot"]
+        }
+    ],
+    "nodeAttrs": [
+        {"target": ["autogroup:members"], "attr": ["funnel"]}
+    ],
+    "grants": [
+        {"src": ["autogroup:admin"], "dst": ["*"], "ip": ["*"]},
+        {"src": ["shared@example.com"], "dst": ["tag:nas"], "ip": ["tcp:22", "tcp:28888"]}
+    ]
+}"""
+
+
+@patch("tailscale.tailscale.config", side_effect=_no_decouple)
+async def test_read_modify_write_shared_user_grant(_mock: patch, aresponses: ResponsesMockServer) -> None:
+    """Read ACL, mutate shared-user grant, write it back -- mirrors fix_nas_grant.py."""
+    # GET returns the pre-fix policy
+    aresponses.add(
+        "api.tailscale.com",
+        "/api/v2/tailnet/frenck/acl",
+        "GET",
+        aresponses.Response(
+            status=200,
+            headers={"Content-Type": "application/json"},
+            text=_MULTI_GRANT_ACL_RESPONSE,
+        ),
+    )
+    # POST returns the post-fix policy
+    aresponses.add(
+        "api.tailscale.com",
+        "/api/v2/tailnet/frenck/acl",
+        "POST",
+        aresponses.Response(
+            status=200,
+            headers={"Content-Type": "application/json"},
+            text=_UPDATED_GRANT_ACL_RESPONSE,
+        ),
+    )
+    async with aiohttp.ClientSession() as session:
+        tailscale = Tailscale(tailnet="frenck", api_key="abc", session=session)
+        policy = await tailscale.acl()
+
+        # Pre-fix state: shared-user grant targets host alias with only resilio port
+        shared_grant = policy.grants[1]
+        assert shared_grant.src == ["shared@example.com"]
+        assert shared_grant.dst == ["ds920"]
+        assert shared_grant.ip == ["tcp:28888"]
+
+        # Mutate to match SSH rule dst and add SSH port
+        shared_grant.dst = ["tag:nas"]
+        shared_grant.ip = ["tcp:22", "tcp:28888"]
+
+        updated = await tailscale.set_acl(policy)
+
+        # Post-fix state: grant dst aligned with SSH rule, both ports present
+        result_grant = updated.grants[1]
+        assert result_grant.dst == ["tag:nas"]
+        assert result_grant.ip == ["tcp:22", "tcp:28888"]
+        # Admin grant unchanged
+        assert updated.grants[0].dst == ["*"]
+        assert updated.grants[0].ip == ["*"]
