@@ -62,6 +62,18 @@ Extended docs live in `docs/`. Pull these in when you need deeper context:
 - **[Testing](docs/testing.md)** -- test categories, configuration, integration/hypothesis/e2e details
 - **[Style](docs/style.md)** -- formatting rules, import ordering, model conventions
 
+## No PII or secrets
+
+Never commit or track personally identifiable information (PII) anywhere in the repo. This includes but is not limited to:
+
+- **Email addresses** -- use placeholders like `user@example.com`
+- **IP addresses** -- use RFC 5737 documentation ranges (`192.0.2.x`, `198.51.100.x`, `203.0.113.x`) or `<REDACTED_IP>`
+- **Tailscale IPs** -- same as above; never use real `100.x.y.z` tailnet addresses
+- **API keys and tokens** -- load from environment variables; never hardcode
+- **Usernames, real names, or account identifiers** -- use generic placeholders
+
+This applies to source code, tests, documentation, backlog tasks, commit messages, and any other tracked file. If PII is discovered in existing files, redact it immediately.
+
 ## Gotchas
 
 - CI workflow (`.github/workflows/tests.yaml`) still uses Poetry and Python 3.11 but will be refactored to uv. Use uv locally.
