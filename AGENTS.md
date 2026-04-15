@@ -76,6 +76,13 @@ This applies to source code, tests, documentation, backlog tasks, commit message
 
 **Encrypted repo secrets are fine.** Using `gh secret set` to upload values from `.env` to GitHub's encrypted repo secrets is permitted and expected for CI (e.g., e2e tests). The restriction above is about committing plaintext secrets to tracked files, not about setting encrypted secrets via the GitHub API.
 
+## Naming
+
+- **GitHub org** (repo URLs, CI): `pythoninthegrasses` (with `es`)
+- **GitHub username** (commits, profile): `pythoninthegrass` (no `es`)
+
+Do not confuse the two. Repo URLs use the org: `github.com/pythoninthegrasses/tailscale`.
+
 ## Gotchas
 
 - CI workflow (`.github/workflows/pytest.yml`) uses Blacksmith runners and uv.
