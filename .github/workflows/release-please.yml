@@ -11,6 +11,9 @@ permissions:
 jobs:
   release-please:
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
 
     steps:
       - name: Release with release-please
