@@ -15,7 +15,7 @@ Not published to PyPI. Install directly from the repo:
 
 ```bash
 # Remote install
-uv pip install https://github.com/pythoninthegrass/tailscale.git
+uv pip install https://github.com/pythoninthegrasses/tailscale.git
 
 # Local install
 uv pip install .
@@ -76,7 +76,7 @@ This applies to source code, tests, documentation, backlog tasks, commit message
 
 ## Gotchas
 
-- CI workflow (`.github/workflows/tests.yaml`) still uses Poetry and Python 3.11 but will be refactored to uv. Use uv locally.
+- CI workflow (`.github/workflows/pytest.yml`) uses Blacksmith runners and uv.
 - `.env` contains a Tailscale API key. Do not commit secrets or reference this key in code.
 - prek `fail_fast: true` -- first hook failure stops the run.
 - `ruff.toml` sets `fix-only = true` globally, so `ruff check` without `--fix` still applies fixes silently. Use `--exit-non-zero-on-fix` to detect changes.

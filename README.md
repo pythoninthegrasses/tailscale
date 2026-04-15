@@ -11,7 +11,7 @@ integrate with Tailscale.
 ## Installation
 
 ```bash
-uv pip install https://github.com/pythoninthegrass/tailscale.git
+uv pip install https://github.com/pythoninthegrasses/tailscale.git
 ```
 
 ## Usage
@@ -25,7 +25,7 @@ from tailscale import Tailscale
 async def main():
     """Show example on using the Tailscale API client."""
     async with Tailscale(
-        tailnet="frenck",
+        tailnet="example",
         api_key="tskey-somethingsomething",
     ) as tailscale:
 
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
 ## Changelog & Releases
 
-This repository keeps a changelog using [GitHub's releases](https://github.com/pythoninthegrass/tailscale/releases) functionality. The format of the log is based on [Keep a Changelog](https://keepachangelog.com/).
+This repository keeps a changelog using [GitHub's releases](https://github.com/pythoninthegrasses/tailscale/releases) functionality. The format of the log is based on [Keep a Changelog](https://keepachangelog.com/).
 
 Releases are based on [Semantic Versioning](https://semver.org/), and use the format of `MAJOR.MINOR.PATCH`. In a nutshell, the version will be incremented based on the following:
 
