@@ -6,13 +6,21 @@ on:
       - main
       - master
     paths:
-      - '**/*.py'
+      - 'src/**/*.py'
+      - 'tests/**/*.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/pytest.yml'
   pull_request:
     branches:
       - main
       - master
     paths:
-      - '**/*.py'
+      - 'src/**/*.py'
+      - 'tests/**/*.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/pytest.yml'
   workflow_dispatch:
 
 jobs:
