@@ -8,7 +8,17 @@ from tailscale.exceptions import (
     TailscaleConnectionError,
     TailscaleError,
 )
-from tailscale.models import AclGrant, AclSshRule, ClientConnectivity, ClientSupports, Device, Devices, NodeAttr, PolicyFile
+from tailscale.models import (
+    AclGrant,
+    AclSshRule,
+    ClientConnectivity,
+    ClientSupports,
+    Device,
+    Devices,
+    Latency,
+    NodeAttr,
+    PolicyFile,
+)
 
 nullable_bool = st.one_of(st.none(), st.booleans())
 
@@ -22,10 +32,17 @@ client_supports_st = st.builds(
     upnp=nullable_bool,
 )
 
+latency_st = st.builds(
+    Latency,
+    latency_ms=st.floats(min_value=0.0, max_value=1000.0, allow_nan=False, allow_infinity=False),
+    preferred=nullable_bool,
+)
+
 client_connectivity_st = st.builds(
     ClientConnectivity,
     client_supports=client_supports_st,
     endpoints=st.lists(st.text(min_size=1, max_size=50), max_size=5),
+    latency=st.dictionaries(keys=st.text(min_size=1, max_size=30), values=latency_st, max_size=5),
     mapping_varies_by_dest_ip=nullable_bool,
 )
 
@@ -39,17 +56,24 @@ device_st = st.builds(
     blocks_incoming_connections=st.booleans(),
     client_connectivity=st.one_of(st.none(), client_connectivity_st),
     client_version=_nonempty_text,
+    connected_to_control=st.booleans(),
     created=_datetime_st,
     device_id=_nonempty_text,
     expires=_datetime_st,
     hostname=_nonempty_text,
+    is_ephemeral=nullable_bool,
     is_external=st.booleans(),
     key_expiry_disabled=st.booleans(),
     last_seen=_datetime_st,
     machine_key=_nonempty_text,
+    multiple_connections=nullable_bool,
     name=_nonempty_text,
+    node_id=_nonempty_text,
     node_key=_nonempty_text,
     os=_nonempty_text,
+    ssh_enabled=nullable_bool,
+    tailnet_lock_error=st.one_of(st.none(), _nonempty_text),
+    tailnet_lock_key=_nonempty_text,
     update_available=st.booleans(),
     user=_nonempty_text,
     advertised_routes=st.lists(_nonempty_text, max_size=5),

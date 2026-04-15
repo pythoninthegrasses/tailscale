@@ -12,6 +12,7 @@ from .models import (
     ClientSupports,
     Device,
     Devices,
+    Latency,
     NodeAttr,
     PolicyFile,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "ClientSupports",
     "Device",
     "Devices",
+    "Latency",
     "NodeAttr",
     "PolicyFile",
     "Tailscale",

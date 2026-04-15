@@ -245,6 +245,7 @@ _SINGLE_DEVICE_RESPONSE = """{
         "mappingVariesByDestIP": false
     },
     "clientVersion": "1.60.0",
+    "connectedToControl": true,
     "created": "2023-01-01T00:00:00Z",
     "id": "12345",
     "expires": "2025-01-01T00:00:00Z",
@@ -254,8 +255,10 @@ _SINGLE_DEVICE_RESPONSE = """{
     "lastSeen": "2024-06-01T12:00:00Z",
     "machineKey": "mkey:abc",
     "name": "ds920.tail.ts.net",
+    "nodeId": "n12345CNTRL",
     "nodeKey": "nodekey:def",
     "os": "linux",
+    "tailnetLockKey": "",
     "updateAvailable": false,
     "user": "lance@example.com",
     "tags": ["tag:nas"]

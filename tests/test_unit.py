@@ -19,6 +19,7 @@ from tailscale.models import (
     ClientSupports,
     Device,
     Devices,
+    Latency,
     NodeAttr,
     PolicyFile,
 )
@@ -80,20 +81,30 @@ _DEVICE_JSON = """{
             "upnp": false
         },
         "endpoints": ["1.2.3.4:5678"],
+        "latency": {
+            "Dallas": {"latencyMs": 60.46384, "preferred": true},
+            "New York City": {"latencyMs": 31.323}
+        },
         "mappingVariesByDestIP": false
     },
     "clientVersion": "1.22.0",
+    "connectedToControl": true,
     "created": "2023-01-01T00:00:00Z",
     "id": "device-1",
     "expires": "2024-01-01T00:00:00Z",
     "hostname": "myhost",
+    "isEphemeral": false,
     "isExternal": false,
     "keyExpiryDisabled": false,
     "lastSeen": "2023-06-01T12:00:00Z",
     "machineKey": "mkey:abc",
     "name": "myhost.tail.ts.net",
+    "nodeId": "n1234567CNTRL",
     "nodeKey": "nodekey:def",
     "os": "linux",
+    "sshEnabled": true,
+    "tailnetLockError": "",
+    "tailnetLockKey": "tlpub:abc123",
     "updateAvailable": false,
     "user": "user@example.com",
     "tags": ["tag:server"]
@@ -139,6 +150,115 @@ def test_device_default_lists() -> None:
     device = Device.from_json(_DEVICE_JSON)
     assert device.advertised_routes == []
     assert device.enabled_routes == []
+
+
+def test_device_missing_optional_fields() -> None:
+    """Device deserializes when optional fields are absent."""
+    minimal = """{
+        "addresses": ["100.64.0.1"],
+        "authorized": true,
+        "blocksIncomingConnections": false,
+        "clientVersion": "1.22.0",
+        "connectedToControl": false,
+        "id": "device-1",
+        "hostname": "myhost",
+        "isExternal": false,
+        "keyExpiryDisabled": false,
+        "machineKey": "mkey:abc",
+        "name": "myhost.tail.ts.net",
+        "nodeId": "n999",
+        "nodeKey": "nodekey:def",
+        "os": "linux",
+        "tailnetLockKey": "",
+        "updateAvailable": false,
+        "user": "user@example.com"
+    }"""
+    device = Device.from_json(minimal)
+    assert device.device_id == "device-1"
+    assert device.last_seen is None
+    assert device.created is None
+    assert device.expires is None
+    assert device.client_connectivity is None
+    assert device.is_ephemeral is None
+    assert device.multiple_connections is None
+    assert device.ssh_enabled is None
+    assert device.tailnet_lock_error is None
+
+
+def test_client_supports_missing_hair_pinning() -> None:
+    """ClientSupports deserializes when hairPinning is absent."""
+    minimal = '{"ipv6": true, "pcp": false, "pmp": false, "udp": true, "upnp": false}'
+    supports = ClientSupports.from_json(minimal)
+    assert supports.hair_pinning is None
+    assert supports.ipv6 is True
+
+
+def test_latency_from_json() -> None:
+    """Latency dataclass deserializes latencyMs alias and optional preferred."""
+    full = '{"latencyMs": 60.46, "preferred": true}'
+    lat = Latency.from_json(full)
+    assert lat.latency_ms == pytest.approx(60.46)
+    assert lat.preferred is True
+
+    minimal = '{"latencyMs": 31.3}'
+    lat2 = Latency.from_json(minimal)
+    assert lat2.latency_ms == pytest.approx(31.3)
+    assert lat2.preferred is None
+
+
+def test_client_connectivity_latency() -> None:
+    """ClientConnectivity.latency deserializes nested Latency dict."""
+    device = Device.from_json(_DEVICE_JSON)
+    cc = device.client_connectivity
+    assert cc is not None
+    assert "Dallas" in cc.latency
+    assert cc.latency["Dallas"].latency_ms == pytest.approx(60.46384)
+    assert cc.latency["Dallas"].preferred is True
+    assert "New York City" in cc.latency
+    assert cc.latency["New York City"].preferred is None
+
+
+def test_client_connectivity_empty_latency() -> None:
+    """ClientConnectivity.latency defaults to empty dict when absent."""
+    raw = '{"clientSupports": {"ipv6": true, "pcp": false, "pmp": false, "udp": true, "upnp": false}}'
+    cc = ClientConnectivity.from_json(raw)
+    assert cc.latency == {}
+
+
+def test_device_new_required_fields() -> None:
+    """Device gains node_id, connected_to_control, tailnet_lock_key."""
+    device = Device.from_json(_DEVICE_JSON)
+    assert device.node_id == "n1234567CNTRL"
+    assert device.connected_to_control is True
+    assert device.tailnet_lock_key == "tlpub:abc123"
+
+
+def test_device_new_optional_fields() -> None:
+    """Device gains is_ephemeral, ssh_enabled, multiple_connections, tailnet_lock_error."""
+    device = Device.from_json(_DEVICE_JSON)
+    assert device.is_ephemeral is False
+    assert device.ssh_enabled is True
+    # multipleConnections absent from fixture -> None (API omits when false)
+    assert device.multiple_connections is None
+    # tailnetLockError is empty string -> converted to None by __pre_deserialize__
+    assert device.tailnet_lock_error is None
+
+
+def test_device_tailnet_lock_error_nonempty() -> None:
+    """Non-empty tailnetLockError is preserved as-is."""
+    patched = _DEVICE_JSON.replace('"tailnetLockError": ""', '"tailnetLockError": "key not signed"')
+    device = Device.from_json(patched)
+    assert device.tailnet_lock_error == "key not signed"
+
+
+def test_device_tailnet_lock_error_missing() -> None:
+    """Missing tailnetLockError is converted to None by __pre_deserialize__."""
+    import json
+
+    data = json.loads(_DEVICE_JSON)
+    del data["tailnetLockError"]
+    device = Device.from_json(json.dumps(data))
+    assert device.tailnet_lock_error is None
 
 
 # -- decouple resolution tests ------------------------------------------------
