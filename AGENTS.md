@@ -62,9 +62,9 @@ Extended docs live in `docs/`. Pull these in when you need deeper context:
 - **[Testing](docs/testing.md)** -- test categories, configuration, integration/hypothesis/e2e details
 - **[Style](docs/style.md)** -- formatting rules, import ordering, model conventions
 
-## No PII or secrets
+## No PII or plaintext secrets
 
-Never commit or track personally identifiable information (PII) anywhere in the repo. This includes but is not limited to:
+Never commit or track personally identifiable information (PII) or plaintext secrets anywhere in the repo. This includes but is not limited to:
 
 - **Email addresses** -- use placeholders like `user@example.com`
 - **IP addresses** -- use RFC 5737 documentation ranges (`192.0.2.x`, `198.51.100.x`, `203.0.113.x`) or `<REDACTED_IP>`
@@ -74,10 +74,12 @@ Never commit or track personally identifiable information (PII) anywhere in the 
 
 This applies to source code, tests, documentation, backlog tasks, commit messages, and any other tracked file. If PII is discovered in existing files, redact it immediately.
 
+**Encrypted repo secrets are fine.** Using `gh secret set` to upload values from `.env` to GitHub's encrypted repo secrets is permitted and expected for CI (e.g., e2e tests). The restriction above is about committing plaintext secrets to tracked files, not about setting encrypted secrets via the GitHub API.
+
 ## Gotchas
 
 - CI workflow (`.github/workflows/pytest.yml`) uses Blacksmith runners and uv.
-- `.env` contains a Tailscale API key. Do not commit secrets or reference this key in code.
+- `.env` contains a Tailscale API key. Do not commit secrets or reference this key in code. Use `gh secret set` to upload to GitHub's encrypted repo secrets.
 - prek `fail_fast: true` -- first hook failure stops the run.
 - `ruff.toml` sets `fix-only = true` globally, so `ruff check` without `--fix` still applies fixes silently. Use `--exit-non-zero-on-fix` to detect changes.
 
