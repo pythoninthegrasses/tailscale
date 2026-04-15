@@ -3,7 +3,7 @@
 ## Running tests
 
 ```bash
-# Run tests (e2e excluded by default via addopts)
+# Run all tests (e2e tests auto-skip when env vars are absent)
 uv run pytest
 
 # Run a single test file or test
@@ -18,6 +18,7 @@ uv run pytest -m e2e
 
 - `asyncio_mode = "auto"` -- async test functions run without `@pytest.mark.asyncio`
 - `--cov` is on by default via `addopts`
+- `addopts` does **not** filter by marker -- e2e tests are collected but skipped via `skipif`
 
 ## Test categories
 
@@ -44,4 +45,26 @@ E2E tests require the following environment variables:
 - `TAILSCALE_API_KEY`
 - `TAILSCALE_TAILNET`
 
-These are excluded by default via pytest `addopts`. Run with `uv run pytest -m e2e`.
+E2E tests use `pytestmark` with two `skipif` conditions that check for the env vars
+at import time via `python-decouple`. When either var is absent, all tests in the
+file are skipped (shown as `s` in output). This means `uv run pytest` collects e2e
+tests but skips them -- no marker filter is needed.
+
+Run only e2e tests with `uv run pytest -m e2e`.
+
+## CI workflow
+
+The GitHub Actions workflow (`.github/workflows/pytest.yml`) runs on Blacksmith
+runners and has two test steps:
+
+1. **Run unit tests** (`uv run pytest -s`) -- collects all 78 tests; e2e tests
+   auto-skip because the secrets env vars are not injected into this step.
+2. **Run e2e tests** (`uv run pytest -m e2e -s`) -- runs only on `push` (not PRs)
+   with `TAILSCALE_API_KEY` and `TAILSCALE_TAILNET` injected from repo secrets.
+
+### Caching
+
+`astral-sh/setup-uv@v6` caches the uv download cache (`~/.cache/uv`) by default.
+The `.venv` is recreated each run but packages are linked from the cache, so
+`uv sync --all-extras` typically completes in ~1 second. Caching the venv itself
+is not currently necessary given the fast install times.
