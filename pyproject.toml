@@ -1,6 +1,6 @@
 [project]
 name = "tailscale"
-version = "0.6.2"
+version = "0.7.0"
 description = "Asynchronous client for the Tailscale API."
 authors = [{ name = "Franck Nijhof", email = "opensource@frenck.dev" }]
 maintainers = [
